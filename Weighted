@@ -1,0 +1,26 @@
+// Totals in current filter context
+Period Cap Total := SUM ( Capacity[Capacity] )
+Period Req Total := SUM ( Requirements[Req] )
+
+// Per-category in current filter context
+Cap_c := SUM ( Capacity[Capacity] )
+Req_c := SUM ( Requirements[Req] )
+
+Cap Share :=
+DIVIDE ( [Cap_c], [Period Cap Total] )
+
+Req Share :=
+DIVIDE ( [Req_c], [Period Req Total] )
+
+// Blend shares with the Alpha knob
+Target Share (Weighted) :=
+VAR a = [Alpha Value]   // from What-If parameter
+RETURN (1 - a) * [Cap Share] + a * [Req Share]
+
+// Total to assign = min(total req, total cap)
+Total Assigned (Period) :=
+MIN ( [Period Req Total], [Period Cap Total] )
+
+// Final allocation per category
+Assigned (Weighted over Period) :=
+[Target Share (Weighted)] * [Total Assigned (Period)]
