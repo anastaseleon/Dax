@@ -1,0 +1,19 @@
+Day Cap Total :=
+VAR d = SELECTEDVALUE('Date'[Date])
+RETURN
+    CALCULATE(SUM(Capacity[Capacity]), 'Date'[Date] = d)
+
+Day Req Total :=
+VAR d = SELECTEDVALUE('Date'[Date])
+RETURN
+    CALCULATE(SUM(Requirements[Req]), 'Date'[Date] = d)
+
+Lambda (Day Utilization) :=
+VAR CapTot = [Day Cap Total]
+VAR ReqTot = [Day Req Total]
+RETURN
+    IF ( CapTot <= 0, 0, MIN ( 1, DIVIDE(ReqTot, CapTot) ) )
+
+Assigned (Leveled per day) :=
+VAR cap_c = SUM ( Capacity[Capacity] )
+RETURN [Lambda (Day Utilization)] * cap_c
