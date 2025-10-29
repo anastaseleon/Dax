@@ -1,0 +1,73 @@
+Assigned (Final) :=
+VAR a           = COALESCE ( [Alpha Value], 0.5 )   -- what-if 0..1
+VAR CapTotal    = CALCULATE ( [Cap_c], REMOVEFILTERS ( Category[Category] ) )
+VAR ReqTotal    = CALCULATE ( [Req_c], REMOVEFILTERS ( Category[Category] ) )
+VAR TotalAssign = MIN ( ReqTotal, CapTotal )
+
+-- Build a per-category virtual table for totals used in the refill step
+VAR DistTable =
+    ADDCOLUMNS (
+        VALUES ( Category[Category] ),
+        "CapRow", CALCULATE ( [Cap_c] ),
+        "ReqRow", CALCULATE ( [Req_c] ),
+        "AssignedWeightedRow",
+            ( (1 - a) * DIVIDE ( CALCULATE ( [Cap_c] ), CapTotal )
+            + a       * DIVIDE ( CALCULATE ( [Req_c] ), ReqTotal ) )
+            * TotalAssign,
+        "AssignedCappedRow",
+            MINX (
+                ROW ( "x",
+                    ( (1 - a) * DIVIDE ( CALCULATE ( [Cap_c] ), CapTotal )
+                    + a       * DIVIDE ( CALCULATE ( [Req_c] ), ReqTotal ) )
+                    * TotalAssign
+                ),
+                [x]
+            )
+            /* cap by capacity */
+            /* If you also want to cap by own demand, wrap with: MIN ( <above>, [ReqRow] ) */,
+        "HeadroomRow",
+            MAX ( 0,
+                  CALCULATE ( [Cap_c] )
+                  - MINX (
+                        ROW ( "x",
+                            ( (1 - a) * DIVIDE ( CALCULATE ( [Cap_c] ), CapTotal )
+                            + a       * DIVIDE ( CALCULATE ( [Req_c] ), ReqTotal ) )
+                            * TotalAssign
+                        ),
+                        [x]
+                    )
+            )
+            /* if also capping by demand, use: MAX(0, MIN([CapRow],[ReqRow]) - AssignedCappedRow) */
+    )
+
+VAR SumAssignedCapped =
+    SUMX ( DistTable, [AssignedCappedRow] )
+
+VAR Leftover =
+    TotalAssign - SumAssignedCapped
+
+VAR HeadroomTotal =
+    SUMX ( DistTable, [HeadroomRow] )
+
+-- Compute current category’s pieces
+VAR CapHere = [Cap_c]
+VAR ReqHere = [Req_c]
+VAR AssignedWeightedHere =
+    ( (1 - a) * DIVIDE ( CapHere, CapTotal )
+    + a       * DIVIDE ( ReqHere, ReqTotal ) )
+    * TotalAssign
+
+VAR AssignedCappedHere = MIN ( AssignedWeightedHere, CapHere )
+/* add ", ReqHere" inside MIN if you also cap by own demand */
+
+VAR HeadroomHere = MAX ( 0, CapHere - AssignedCappedHere )
+/* or MAX(0, MIN(CapHere, ReqHere) - AssignedCappedHere) if demand-capped */
+
+VAR AddHere =
+    IF ( HeadroomTotal > 0,
+         Leftover * DIVIDE ( HeadroomHere, HeadroomTotal ),
+         0
+    )
+
+RETURN
+AssignedCappedHere + AddHere
