@@ -1,0 +1,17 @@
+Assigned (Pooled Capacity) :=
+VAR a =
+    COALESCE ( [Alpha Value], 0.6 )   -- 0=capacity-only, 1=demand-only
+VAR CapTotal =
+    CALCULATE ( [Cap_c], REMOVEFILTERS ( 'WO PART LIST'[SUPPLY_SUBINVENTORY_CODE] ) )
+VAR ReqTotal =
+    CALCULATE ( [Req_c], REMOVEFILTERS ( 'WO PART LIST'[SUPPLY_SUBINVENTORY_CODE] ) )
+VAR TotalAssigned =
+    MIN ( ReqTotal, CapTotal )
+VAR CapShare =
+    DIVIDE ( [Cap_c], CapTotal, 0 )
+VAR ReqShare =
+    DIVIDE ( [Req_c], ReqTotal, 0 )
+VAR Share =
+    ( 1 - a ) * CapShare + a * ReqShare
+RETURN
+    IF ( TotalAssigned > 0, Share * TotalAssigned, 0 )
