@@ -1,12 +1,14 @@
 Assigned (Weighted over Period) = 
-VAR CapTotal = CALCULATE([Cap_c], ALL())
-VAR ReqTotal = CALCULATE([Rec_c], ALL())
+VAR CapTotal = CALCULATE([Cap_c]--, REMOVEFILTERS('WO PART LIST'[SUPPLY_SUBINVENTORY_CODE])
+)
+VAR ReqTotal = CALCULATE([Rec_c]--, REMOVEFILTERS('WO PART LIST'[SUPPLY_SUBINVENTORY_CODE])
+)
 
 VAR Cap_Share = DIVIDE([Cap_c], CapTotal, 0)
 VAR Req_Share = DIVIDE([Rec_c], ReqTotal, 0)
 
 -- Alpha blending factor from What-If parameter
-VAR a = 1 -- SELECTEDVALUE('Alpha Parameter'[Alpha], 0.5)
+VAR a = 0.5 -- SELECTEDVALUE('Alpha Parameter'[Alpha], 0.5)
 
 -- Weighted share
 VAR target_share = (1 - a) * Cap_Share + a * Req_Share
@@ -15,4 +17,4 @@ VAR target_share = (1 - a) * Cap_Share + a * Req_Share
 VAR Total_Assigned = MIN(ReqTotal, CapTotal)
 
 RETURN
-ROUNDUP(target_share * Total_Assigned,0)
+target_share * Total_Assigned
