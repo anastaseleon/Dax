@@ -1,0 +1,22 @@
+Assigned :=
+VAR Cap_c          = [Cap_c]
+VAR Req_c          = [Req_c]
+
+-- Do as much as possible inside the category (today)
+VAR AssignedToday  = MIN ( Req_c, Cap_c )
+
+-- Today's shortfall (unmet demand)
+VAR ShortfallToday = MAX ( 0, Req_c - Cap_c )
+
+-- Cumulative leftover demand up to the current date (respects slicers)
+VAR dMax =
+    MAX ( 'Date'[Date] )
+VAR BacklogCum =
+    SUMX (
+        FILTER ( ALLSELECTED ( 'Date'[Date] ), 'Date'[Date] <= dMax ),
+        CALCULATE ( MAX ( 0, [Req_c] - [Cap_c] ) )
+    )
+
+-- You can use BacklogCum in a tooltip or separate card if needed.
+RETURN
+    AssignedToday
