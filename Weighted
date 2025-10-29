@@ -1,20 +1,21 @@
-Assigned (Weighted over Period) = 
-VAR CapTotal = CALCULATE([Cap_c]--, REMOVEFILTERS('WO PART LIST'[SUPPLY_SUBINVENTORY_CODE])
-)
-VAR ReqTotal = CALCULATE([Rec_c]--, REMOVEFILTERS('WO PART LIST'[SUPPLY_SUBINVENTORY_CODE])
-)
+Assigned (Weighted over Period) :=
+VAR CapHere   = [Cap_c]             -- your existing measure
+VAR ReqHere   = [Req_c]             -- (you wrote Rec_c earlier; using Req_c)
+VAR a         = COALESCE ( [Alpha Value], 0.5 )   -- What-If (0..1). Fallback=0.5
 
-VAR Cap_Share = DIVIDE([Cap_c], CapTotal, 0)
-VAR Req_Share = DIVIDE([Rec_c], ReqTotal, 0)
+-- Period totals: respect all slicers, ignore only the category (SUPPLY_SUBINVENTORY_CODE)
+VAR CapTotal  = CALCULATE ( [Cap_c], REMOVEFILTERS ( 'WO PART LIST'[SUPPLY_SUBINVENTORY_CODE] ) )
+VAR ReqTotal  = CALCULATE ( [Req_c], REMOVEFILTERS ( 'WO PART LIST'[SUPPLY_SUBINVENTORY_CODE] ) )
 
--- Alpha blending factor from What-If parameter
-VAR a = 0.5 -- SELECTEDVALUE('Alpha Parameter'[Alpha], 0.5)
+-- Shares (safe DIVIDE)
+VAR CapShare  = DIVIDE ( CapHere, CapTotal, 0 )
+VAR ReqShare  = DIVIDE ( ReqHere, ReqTotal, 0 )
 
 -- Weighted share
-VAR target_share = (1 - a) * Cap_Share + a * Req_Share
+VAR TargetShare = (1 - a) * CapShare + a * ReqShare
 
--- Total to assign = min(total req, total cap)
-VAR Total_Assigned = MIN(ReqTotal, CapTotal)
+-- Total to assign this period (can’t exceed what exists)
+VAR TotalAssigned = MIN ( ReqTotal, CapTotal )
 
-RETURN
-target_share * Total_Assigned
+-- Guard: if no totals, return 0
+RETURN IF ( TotalAssigned <= 0, 0, TargetShare * TotalAssigned )
